@@ -65,42 +65,50 @@ def get_parser(args=None):
         setattr(ns, 'commands', [command])
         setattr(ns, 'mode', AllMode)
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--local',
-                        action='store_true',
-                        dest='local',
-                        help='execute locally')
-    parser.add_argument('--docker',
-                        action='append',
-                        type=node_factory('docker'),
-                        dest='nodes',
-                        help='execute in a local container')
-    parser.add_argument('--lxc',
-                        action='append',
-                        type=node_factory('lxc'),
-                        dest='nodes',
-                        help='execute in a local container')
-    parser.add_argument('--ssh',
-                        action='append',
-                        type=node_factory('ssh'),
-                        dest='nodes',
-                        help='execute in a remote server via ssh')
+    parser = argparse.ArgumentParser(description='execute commands in a cooperative manner, by distributing them to many nodes')  # noqa
+    group = parser.add_argument_group('nodes',
+                                      description='distribute commands to these nodes. repeatable. one required')  # noqa
+    group.add_argument('--local',
+                       action='store_true',
+                       dest='local',
+                       help='execute locally')
+    group.add_argument('--docker',
+                       action='append',
+                       type=node_factory('docker'),
+                       metavar='CONTAINER',
+                       dest='nodes',
+                       help='execute in a local container')
+    group.add_argument('--lxc',
+                       action='append',
+                       type=node_factory('lxc'),
+                       metavar='CONTAINER',
+                       dest='nodes',
+                       help='execute in a local container')
+    group.add_argument('--ssh',
+                       action='append',
+                       type=node_factory('ssh'),
+                       metavar='ACCESS',
+                       dest='nodes',
+                       help='execute in a remote server via ssh')
     if not hasattr(ns, 'execute'):
         parser.add_argument('-c', '--command',
                             action='append',
+                            metavar='COMMAND',
                             dest='commands',
-                            help='command to execute')
+                            help='command to execute. repeatable. one required')  # noqa
     if not hasattr(ns, 'mode'):
         parser.add_argument('-m', '--mode',
                             type=mode_factory,
                             default='all',
-                            help='which mode?')
-    parser.add_argument('-t', '--timeout',
-                        type=int,
-                        help='restrict the whole execution time')
+                            help='select a mode (all, distribute)')
     parser.add_argument('-b', '--batch',
                         type=batch_factory,
+                        metavar='SIZE',
                         help='how many jobs must be executed concurrently')
+    parser.add_argument('-t', '--timeout',
+                        type=int,
+                        metavar='SECONDS',
+                        help='restrict the whole execution time')
 
     return parser, ns, args
 

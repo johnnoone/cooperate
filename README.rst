@@ -50,6 +50,7 @@ Commands can be distribued thru these kind of nodes:
 * **--docker** execute in a local docker container
 * **--lxc** execute in a local lxc container
 
+These options can be repeated as often as needed.
 
 Modes
 -----
