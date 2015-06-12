@@ -10,7 +10,9 @@ For example::
 
     cooperate --local -- echo FOO
 
-Will execute the job "echo FOO" locally::
+Will execute the job "echo FOO" locally.
+
+This one::
 
     cooperate --ssh me@my.node -- echo FOO
 
@@ -43,17 +45,20 @@ Nodes
 
 Commands can be distribued thru these kind of nodes:
 
-* **local** execute locally
-* **ssh** execute thru ssh
-* **docker** execute in a local docker container
-* **lxc** execute in a local lxc container
+* **--local** execute locally
+* **--ssh** execute thru ssh
+* **--docker** execute in a local docker container
+* **--lxc** execute in a local lxc container
 
 
 Modes
 -----
 
-There is 2 modes: **all** and **distribute**.
-By default, it will use the 'all' mode, which execute all commands in all nodes::
+By default, it spawns every commands to every nodes.
+
+The **-m**, **--mode** allow to configure the desired mode.
+
+The **all** mode executes all commands in all nodes::
 
     cooperate --local --ssh me@my.node --ssh me@my.second.node \
         --command="echo FOO" --command="echo BAR"
@@ -66,7 +71,7 @@ Is equivalent to::
     ssh me@my.second.node echo BAR
 
 
-You can also **distribute** commands between all nodes::
+The **distribute** mode share the commands out among all the nodes::
 
     cooperate --local --ssh me@my.node --ssh me@my.second.node \
         --command="echo FOO" --command="echo BAR" --mode=distribute
@@ -80,10 +85,9 @@ Is equivalent to::
 Concurrency
 -----------
 
-By default, it will execute all jobs simultaneously.
-It can be set by a **--concurrence** parameter, where expected values are a number
+By default, it executes all jobs simultaneously.
 
-The **--concurrence** option allows to execute on only a specify number of jobs at a time. Both percentages and finite numbers are supported::
+The **-b**, **--batch** option allows to execute on only a specify number of jobs at a time. Both percentages and finite numbers are supported::
 
     cooperate --local --concurrence 1 \
         --command="echo FOO" --command="echo BAR" --command="echo BAZ"

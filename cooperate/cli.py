@@ -37,7 +37,7 @@ def mode_factory(type):
         raise argparse.ArgumentTypeError('Bad mode %r' % type)
 
 
-def concurrency_factory(value):
+def batch_factory(value):
     try:
         value = int(value, 10)
         return Concurrency(size=value)
@@ -66,16 +66,6 @@ def get_parser(args=None):
         setattr(ns, 'mode', AllMode)
 
     parser = argparse.ArgumentParser()
-    if not hasattr(ns, 'execute'):
-        parser.add_argument('--command',
-                            action='append',
-                            dest='commands',
-                            help='command to execute')
-    if not hasattr(ns, 'mode'):
-        parser.add_argument('--mode',
-                            type=mode_factory,
-                            default='all',
-                            help='which mode?')
     parser.add_argument('--local',
                         action='store_true',
                         dest='local',
@@ -95,12 +85,22 @@ def get_parser(args=None):
                         type=node_factory('ssh'),
                         dest='nodes',
                         help='execute in a remote server via ssh')
-    parser.add_argument('--timeout',
+    if not hasattr(ns, 'execute'):
+        parser.add_argument('-c', '--command',
+                            action='append',
+                            dest='commands',
+                            help='command to execute')
+    if not hasattr(ns, 'mode'):
+        parser.add_argument('-m', '--mode',
+                            type=mode_factory,
+                            default='all',
+                            help='which mode?')
+    parser.add_argument('-t', '--timeout',
                         type=int,
-                        help='add a timeout to the global execution time')
-    parser.add_argument('--concurrency',
-                        type=concurrency_factory,
-                        help='how many commands must be executed concurrently')
+                        help='restrict the whole execution time')
+    parser.add_argument('-b', '--batch',
+                        type=batch_factory,
+                        help='how many jobs must be executed concurrently')
 
     return parser, ns, args
 
@@ -118,8 +118,8 @@ def broadcast(args):
         nodes.insert(0, LocalNode())
 
     jobs = args.mode(nodes, args.commands)
-    if args.concurrency:
-        pooler = Pool(args.concurrency.batch(jobs))
+    if args.batch:
+        pooler = Pool(args.batch.batch(jobs))
     else:
         pooler = Group()
 
