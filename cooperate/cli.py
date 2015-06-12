@@ -5,11 +5,14 @@ import functools
 import os.path
 import signal
 import sys
+from .concurrency import Concurrency
 from .modes import *
 from .nodes import *
 from .renderers import *
+from aioutils import Group, Pool
 
 here = os.path.dirname(os.path.abspath(__file__))
+
 
 def node_factory(type):
     def wrap(obj):
@@ -21,8 +24,7 @@ def node_factory(type):
             return DockerNode(obj)
         if type == 'ssh':
             return SSHNode(obj)
-        else:
-            raise argparse.ArgumentTypeError('Bad type %r for %r' % (type, obj))
+        raise argparse.ArgumentTypeError('Bad type %r for %r' % (type, obj))
     return wrap
 
 
@@ -33,6 +35,22 @@ def mode_factory(type):
         return DistibuteMode
     else:
         raise argparse.ArgumentTypeError('Bad mode %r' % type)
+
+
+def concurrency_factory(value):
+    try:
+        value = int(value, 10)
+        return Concurrency(size=value)
+    except ValueError:
+        pass
+    if value.endswith('%'):
+        try:
+            value = int(value[:-1], 10)
+            if (0 < value) and (value < 100):
+                return Concurrency(part=value)
+        except ValueError:
+            pass
+    raise argparse.ArgumentTypeError('Bad value %r' % value)
 
 
 def get_parser(args=None):
@@ -80,12 +98,14 @@ def get_parser(args=None):
     parser.add_argument('--timeout',
                         type=int,
                         help='add a timeout to the global execution time')
+    parser.add_argument('--concurrency',
+                        type=concurrency_factory,
+                        help='how many commands must be executed concurrently')
 
     return parser, ns, args
 
 
 def broadcast(args):
-
     loop = asyncio.get_event_loop()
     for signame in ('SIGINT', 'SIGTERM'):
         loop.add_signal_handler(getattr(signal, signame),
@@ -97,19 +117,23 @@ def broadcast(args):
     if args.local:
         nodes.insert(0, LocalNode())
 
-    tasks = []
-    for node, command in args.mode(nodes, args.commands):
-        task = asyncio.async(node.run(command))
+    jobs = args.mode(nodes, args.commands)
+    if args.concurrency:
+        pooler = Pool(args.concurrency.batch(jobs))
+    else:
+        pooler = Group()
+
+    for node, command in jobs:
+        task = pooler.spawn(node.run(command))
         render = functools.partial(renderer.render, node=node, command=command)
         task.add_done_callback(render)
-        tasks.append(task)
+    pooler.join()
 
-    loop.run_until_complete(asyncio.wait(tasks, timeout=args.timeout))
     loop.close()
 
 
 def ask_exit(loop, signame):
-    print("got signal %s: exit" % signame)
+    print("# got signal %s: exit" % signame)
     loop.stop()
 
 

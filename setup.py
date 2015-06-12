@@ -28,6 +28,7 @@ setup(
         'Topic :: System :: Clustering',
     ],
     install_requires=[
+        'aioutils',
         'PyYAML',
     ],
     extras_require={
