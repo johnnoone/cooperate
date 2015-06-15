@@ -12,7 +12,6 @@ class StatusRenderer(Renderer):
     def render(self, future, node, command):
         try:
             result = future.result()
-
             response = {
                 node.name: {
                     'command': command,

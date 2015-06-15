@@ -6,9 +6,9 @@ import os.path
 import signal
 import sys
 from .concurrency import Concurrency
-from .modes import *
-from .nodes import *
-from .renderers import *
+from .modes import *  # noqa
+from .nodes import *  # noqa
+from .renderers import *  # noqa
 from aioutils import Group, Pool
 
 here = os.path.dirname(os.path.abspath(__file__))
@@ -51,6 +51,13 @@ def batch_factory(value):
         except ValueError:
             pass
     raise argparse.ArgumentTypeError('Bad value %r' % value)
+
+
+def env_factory(value):
+    if '=' not in value:
+        raise argparse.ArgumentTypeError('Bad value %r' % value)
+    a, b, c = value.partition('=')
+    return (a, c)
 
 
 def get_parser(args=None):
@@ -105,10 +112,19 @@ def get_parser(args=None):
                         type=batch_factory,
                         metavar='SIZE',
                         help='how many jobs must be executed concurrently')
+    # parser.add_argument('-e', '--env',
+    #                     type=env_factory,
+    #                     action='append',
+    #                     metavar='ENV',
+    #                     dest='env',
+    #                     help='set environment variable')
     parser.add_argument('-t', '--timeout',
                         type=int,
                         metavar='SECONDS',
                         help='restrict the whole execution time')
+    parser.add_argument('-v', '--version',
+                        action='version',
+                        version='%(prog)s 0.1')
 
     return parser, ns, args
 
@@ -119,6 +135,7 @@ def broadcast(args):
         loop.add_signal_handler(getattr(signal, signame),
                                 functools.partial(ask_exit, loop, signame))
 
+    env = dict(args.env or [])
     renderer = StatusRenderer()
 
     nodes = args.nodes or []
@@ -132,7 +149,7 @@ def broadcast(args):
         pooler = Group()
 
     for node, command in jobs:
-        task = pooler.spawn(node.run(command))
+        task = pooler.spawn(node.run(command, env=env))
         render = functools.partial(renderer.render, node=node, command=command)
         task.add_done_callback(render)
     pooler.join()
