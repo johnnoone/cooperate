@@ -1,4 +1,4 @@
-from cooperate.cli import get_parser, broadcast
+from cooperate.__main__ import get_parser, broadcast
 import pytest
 import shlex
 

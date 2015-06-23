@@ -96,6 +96,7 @@ class LocalNode(Node):
         args = {'stdout': asyncio.subprocess.PIPE,
                 'stderr': asyncio.subprocess.PIPE,
                 'env': env}
+
         if isinstance(command, (list, tuple)):
             create = asyncio.create_subprocess_exec(*command, **args)
         else:
@@ -159,11 +160,11 @@ class SSHNode(Node):
             args.append('env')
             args.extend(format_env(env))
         if not isinstance(command, (list, tuple)):
-            args = shlex.split(command)
+            command = shlex.split(command)
         args.extend(command)
 
         cmd = 'ssh %s %s' % (self.connect, shlex.quote(' '.join(args)))
-
+        print(cmd)
         create = asyncio.create_subprocess_shell(cmd,  **options)
         proc = yield from create
         stdout, stderr = yield from proc.communicate()

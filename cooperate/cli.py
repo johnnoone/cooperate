@@ -8,6 +8,7 @@ import sys
 from .concurrency import Concurrency
 from .modes import *  # noqa
 from .nodes import *  # noqa
+from .parser import CLIParser
 from .renderers import *  # noqa
 from aioutils import Group, Pool
 
@@ -72,7 +73,7 @@ def get_parser(args=None):
         setattr(ns, 'commands', [command])
         setattr(ns, 'mode', AllMode)
 
-    parser = argparse.ArgumentParser(description='execute commands in a cooperative manner, by distributing them to many nodes')  # noqa
+    parser = CLIParser(description='execute commands in a cooperative manner, by distributing them to many nodes', fromfile_prefix_chars='@')  # noqa
     group = parser.add_argument_group('nodes',
                                       description='distribute commands to these nodes. repeatable. one required')  # noqa
     group.add_argument('--local',
@@ -112,12 +113,12 @@ def get_parser(args=None):
                         type=batch_factory,
                         metavar='SIZE',
                         help='how many jobs must be executed concurrently')
-    # parser.add_argument('-e', '--env',
-    #                     type=env_factory,
-    #                     action='append',
-    #                     metavar='ENV',
-    #                     dest='env',
-    #                     help='set environment variable')
+    parser.add_argument('-e', '--env',
+                        type=env_factory,
+                        action='append',
+                        metavar='ENV',
+                        dest='env',
+                        help='set environment variable')
     parser.add_argument('-t', '--timeout',
                         type=int,
                         metavar='SECONDS',

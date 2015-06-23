@@ -40,6 +40,13 @@ Is equivalent to::
     echo BAR
 
 
+Installation
+------------
+
+::
+
+    pip install cooperate
+
 Nodes
 -----
 
