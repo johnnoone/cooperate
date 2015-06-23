@@ -7,7 +7,7 @@ with open('README.rst') as file:
 
 setup(
     name='cooperate',
-    version='0.1',
+    version='0.2',
     description='Distribute commands to many nodes',
     long_description=content,
     author='Xavier Barbosa',
@@ -36,7 +36,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'cooperate = cooperate.cli:main'
+            'cooperate = cooperate.__main__:run'
         ]
     }
 )

@@ -104,3 +104,33 @@ The **-b**, **--batch** option allows to execute on only a specify number of job
         --command="echo FOO" --command="echo BAR" --command="echo BAZ"
 
 The concurrency system maintains a window of running jobs. When a job returns then it starts a remnant job and so on.
+
+
+Feeding ``cooperate``
+---------------------
+
+Arguments can accept multiple input files for providing arguments, for example::
+
+    cat arguments.txt | cooperate
+    cooperate < arguments.txt
+    cooperate @arguments1.txt @arguments2.txt
+
+These files must have a line per argument, like this::
+
+    --command echo $FOO
+    --local
+    --ssh server1
+    --ssh server2
+
+
+Ouputing
+--------
+
+``cooperate`` will output to the stdout each result as they come in single YAML documents, with these keys
+
+:code: the return code
+:command: the executed command
+:error: error occured into cooperate, if any
+:node: the node name
+:stderr: stderr of the command, if any
+:stdout: stdout of the command, if any

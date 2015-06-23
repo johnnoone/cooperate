@@ -1,18 +1,59 @@
 import argparse
-import asyncio
-import asyncio.subprocess
-import functools
-import os.path
-import signal
+import os
+import stat
 import sys
 from .concurrency import Concurrency
 from .modes import *  # noqa
 from .nodes import *  # noqa
-from .parser import CLIParser
-from .renderers import *  # noqa
-from aioutils import Group, Pool
 
-here = os.path.dirname(os.path.abspath(__file__))
+
+class CLIParser(argparse.ArgumentParser):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.parse_stdin = True
+        self.register('action', 'exec_local', LocalAction)
+
+    def _parse_known_args(self, arg_strings, namespace):
+        if self.parse_stdin:
+            mode = os.fstat(0).st_mode
+            if stat.S_ISFIFO(mode):
+                # cat content.txt | cooperate
+                for arg_line in sys.stdin.read().splitlines():
+                    for arg in self.convert_arg_line_to_args(arg_line):
+                        arg_strings.append(arg)
+            elif stat.S_ISREG(mode):
+                # cooperate < content.txt
+                for arg_line in sys.stdin.read().splitlines():
+                    for arg in self.convert_arg_line_to_args(arg_line):
+                        arg_strings.append(arg)
+        return super()._parse_known_args(arg_strings, namespace)
+
+    def convert_arg_line_to_args(self, arg_line):
+        if arg_line.startswith('-'):
+            return arg_line.split(' ', 1)
+
+
+class LocalAction(argparse.Action):
+
+    def __init__(self,
+                 option_strings,
+                 dest,
+                 default=None,
+                 required=False,
+                 help=None):
+        super().__init__(
+            option_strings=option_strings,
+            dest=dest,
+            nargs=0,
+            default=default,
+            required=required,
+            help=help)
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        nodes = getattr(parser, 'nodes', []) or []
+        nodes.insert(0, LocalNode())
+        setattr(namespace, 'nodes', nodes)
 
 
 def node_factory(type):
@@ -74,30 +115,8 @@ def get_parser(args=None):
         setattr(ns, 'mode', AllMode)
 
     parser = CLIParser(description='execute commands in a cooperative manner, by distributing them to many nodes', fromfile_prefix_chars='@')  # noqa
-    group = parser.add_argument_group('nodes',
-                                      description='distribute commands to these nodes. repeatable. one required')  # noqa
-    group.add_argument('--local',
-                       action='store_true',
-                       dest='local',
-                       help='execute locally')
-    group.add_argument('--docker',
-                       action='append',
-                       type=node_factory('docker'),
-                       metavar='CONTAINER',
-                       dest='nodes',
-                       help='execute in a local container')
-    group.add_argument('--lxc',
-                       action='append',
-                       type=node_factory('lxc'),
-                       metavar='CONTAINER',
-                       dest='nodes',
-                       help='execute in a local container')
-    group.add_argument('--ssh',
-                       action='append',
-                       type=node_factory('ssh'),
-                       metavar='ACCESS',
-                       dest='nodes',
-                       help='execute in a remote server via ssh')
+    nodes_loader(parser)
+
     if not hasattr(ns, 'execute'):
         parser.add_argument('-c', '--command',
                             action='append',
@@ -125,49 +144,33 @@ def get_parser(args=None):
                         help='restrict the whole execution time')
     parser.add_argument('-v', '--version',
                         action='version',
-                        version='%(prog)s 0.1')
+                        version='%(prog)s 0.2')
 
     return parser, ns, args
 
 
-def broadcast(args):
-    loop = asyncio.get_event_loop()
-    for signame in ('SIGINT', 'SIGTERM'):
-        loop.add_signal_handler(getattr(signal, signame),
-                                functools.partial(ask_exit, loop, signame))
-
-    env = dict(args.env or [])
-    renderer = StatusRenderer()
-
-    nodes = args.nodes or []
-    if args.local:
-        nodes.insert(0, LocalNode())
-
-    jobs = args.mode(nodes, args.commands)
-    if args.batch:
-        pooler = Pool(args.batch.batch(jobs))
-    else:
-        pooler = Group()
-
-    for node, command in jobs:
-        task = pooler.spawn(node.run(command, env=env))
-        render = functools.partial(renderer.render, node=node, command=command)
-        task.add_done_callback(render)
-    pooler.join()
-
-    loop.close()
-
-
-def ask_exit(loop, signame):
-    print("# got signal %s: exit" % signame)
-    loop.stop()
-
-
-def main():
-    parser, ns, remains = get_parser()
-    args = parser.parse_args(remains, namespace=ns)
-    broadcast(args)
-
-
-if __name__ == '__main__':
-    main()
+def nodes_loader(parser):
+    group = parser.add_argument_group('nodes',
+                                      description='distribute commands to these nodes. repeatable. one required')  # noqa
+    group.add_argument('-l', '--local',
+                       action='exec_local',
+                       help='execute locally')
+    group.add_argument('--docker',
+                       action='append',
+                       type=node_factory('docker'),
+                       metavar='CONTAINER',
+                       dest='nodes',
+                       help='execute in a local container')
+    group.add_argument('--lxc',
+                       action='append',
+                       type=node_factory('lxc'),
+                       metavar='CONTAINER',
+                       dest='nodes',
+                       help='execute in a local container')
+    group.add_argument('--ssh',
+                       action='append',
+                       type=node_factory('ssh'),
+                       metavar='ACCESS',
+                       dest='nodes',
+                       help='execute in a remote server via ssh')
+    return parser

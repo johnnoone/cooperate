@@ -13,22 +13,23 @@ class StatusRenderer(Renderer):
         try:
             result = future.result()
             response = {
-                node.name: {
-                    'command': command,
-                    'stdout': result.stdout or None,
-                    'stderr': result.stderr or None,
-                    'code': result.code,
-                    'error': result.error or None,
-                }
+                'node': node.name,
+                'command': command,
+                'stdout': result.stdout or None,
+                'stderr': result.stderr or None,
+                'code': result.code,
+                'error': result.error or None,
             }
         except Exception as error:
             response = {
-                node.name: {
-                    'command': command,
-                    'stdout': None,
-                    'stderr': None,
-                    'code': None,
-                    'error': str(error)
-                }
+                'node': node.name,
+                'command': command,
+                'stdout': None,
+                'stderr': None,
+                'code': None,
+                'error': str(error)
             }
-        print(yaml.dump(response, explicit_start=True))
+
+        return yaml.dump(response,
+                         explicit_start=True,
+                         default_flow_style=False)
