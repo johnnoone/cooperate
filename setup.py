@@ -7,7 +7,7 @@ with open('README.rst') as file:
 
 setup(
     name='cooperate',
-    version='0.2',
+    version='0.3.1',
     description='Distribute commands to many nodes',
     long_description=content,
     author='Xavier Barbosa',
