@@ -61,11 +61,12 @@ def get_parser(args=None):
     if '--' in args:
         # every nodes must exec this only command
         pos = args.index('--')
-        args, command = args[:pos], args[pos+1:]
+        args, command = args[:pos], args[pos + 1:]
         setattr(ns, 'commands', [command])
         setattr(ns, 'mode', AllMode)
 
-    parser = argparse.ArgumentParser(description='execute commands in a cooperative manner, by distributing them to many nodes')  # noqa
+    parser = argparse.ArgumentParser(description='execute commands in a cooperative manner, by distributing them to many nodes',  # noqa
+                                     fromfile_prefix_chars='@')
     group = parser.add_argument_group('nodes',
                                       description='distribute commands to these nodes. repeatable. one required')  # noqa
     group.add_argument('--local',
@@ -109,6 +110,9 @@ def get_parser(args=None):
                         type=int,
                         metavar='SECONDS',
                         help='restrict the whole execution time')
+    parser.add_argument('-v', '--version',
+                        action='version',
+                        version='%(prog)s 0.1')
 
     return parser, ns, args
 
